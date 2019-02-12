@@ -51,3 +51,15 @@ def gee(keyword, round_num_constant, byte_sub_table):
     round_num_constant = round_num_constant.gf_multiply_modular(BitVector(intVal=0x02), AES_modulus, 8)
     return newword, round_num_constant
 
+
+def gen_subbytes_table():
+    subBytesTable = []
+    c = BitVector(bitstring='01100011')
+    for i in range(0, 256):
+        a = BitVector(intVal=i, size=8).gf_MI(AES_modulus, 8) if i != 0 else BitVector(intVal=0)
+        a1, a2, a3, a4 = [a.deep_copy() for x in range(4)]
+        a ^= (a1 >> 4) ^ (a2 >> 5) ^ (a3 >> 6) ^ (a4 >> 7) ^ c
+        subBytesTable.append(int(a))
+    return subBytesTable
+
+
