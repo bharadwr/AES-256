@@ -63,3 +63,11 @@ def gen_subbytes_table():
     return subBytesTable
 
 
+if __name__ == '__main__':
+    import os
+    with open("key.txt", 'r') as KEY:
+        key = BitVector(textstring=KEY.readline().strip())
+        encrypt('message.txt', 'encrypted.txt', key)
+        decrypt('encrypted.txt', 'decrypted.txt', key)
+    os.remove("encrypted.txt")
+    os.rename("encrypted_hex.txt", "encrypted.txt")
