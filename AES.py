@@ -163,6 +163,82 @@ def encrypt(inputfile, outputfile, key):
     FILEOUT.close()
 
 
+def decrypt(inputfile, outputfile, key):
+    temp_shift = [0] * 4
+    key_words = gen_key_schedule_256(key)
+    _, invSubBytesTable = genTables()
+    bv = BitVector(filename=inputfile)
+    statearray = [[0 for x in range(4)] for x in range(4)]
+    FILEOUT = open(outputfile, 'wb')
+    while bv.more_to_read:
+        bitvec = bv.read_bits_from_file(128)
+        if len(bitvec) > 0:
+            if len(bitvec) != 128:
+                bitvec.pad_from_right(128 - len(bitvec))
+
+            # Filling in statearray and XORing
+            for i in range(4):
+                for j in range(4):
+                    statearray[i][j] = bitvec[32 * i + 8 * j:32 * i + 8 * (j + 1)]
+                    statearray[i][j] ^= key_words[-(4 - i)][8 * j:8 + (8 * j)]
+
+            for round_num in range(14, 0, -1):
+                # Inverse ShiftRows
+                for i in range(1, 4):
+                    for j in range(0, 4):
+                        temp_shift[(j + i) % 4] = statearray[j][i]
+                    for j in range(0, 4):
+                        statearray[j][i] = temp_shift[j]
+
+                # Inverse SubBytes
+                for i in range(4):
+                    for j in range(4):
+                        statearray[i][j] = BitVector(intVal=invSubBytesTable[int(statearray[i][j])])
+
+                # Add round_num Key
+                for i in range(4):
+                    for j in range(4):
+                        statearray[i][j] ^= key_words[(4 * (round_num - 1)) + i][8 * j:8 + (8 * j)]
+
+                # Inverse ColumnMixing
+                if round_num != 1:
+                    zeroE = BitVector(bitstring='00001110')
+                    zeroB = BitVector(bitstring='00001011')
+                    zeroD = BitVector(bitstring='00001101')
+                    zero9 = BitVector(bitstring='00001001')
+                    for i in range(4):
+                        temp = (zeroE.gf_multiply_modular(statearray[i][0], AES_modulus, 8)) ^ \
+                               (zeroB.gf_multiply_modular(statearray[i][1], AES_modulus, 8)) ^ \
+                               (zeroD.gf_multiply_modular(statearray[i][2], AES_modulus, 8)) ^ \
+                               (zero9.gf_multiply_modular(statearray[i][3], AES_modulus, 8))
+
+                        temp1 = (zeroE.gf_multiply_modular(statearray[i][1], AES_modulus, 8)) ^ \
+                                (zeroB.gf_multiply_modular(statearray[i][2], AES_modulus, 8)) ^ \
+                                (zeroD.gf_multiply_modular(statearray[i][3], AES_modulus, 8)) ^ \
+                                (zero9.gf_multiply_modular(statearray[i][0], AES_modulus, 8))
+
+                        temp2 = (zeroE.gf_multiply_modular(statearray[i][2], AES_modulus, 8)) ^ \
+                                (zeroB.gf_multiply_modular(statearray[i][3], AES_modulus, 8)) ^ \
+                                (zeroD.gf_multiply_modular(statearray[i][0], AES_modulus, 8)) ^ \
+                                (zero9.gf_multiply_modular(statearray[i][1], AES_modulus, 8))
+
+                        temp3 = (zeroE.gf_multiply_modular(statearray[i][3], AES_modulus, 8)) ^ \
+                                (zeroB.gf_multiply_modular(statearray[i][0], AES_modulus, 8)) ^ \
+                                (zeroD.gf_multiply_modular(statearray[i][1], AES_modulus, 8)) ^ \
+                                (zero9.gf_multiply_modular(statearray[i][2], AES_modulus, 8))
+
+                        statearray[i][0] = temp
+                        statearray[i][1] = temp1
+                        statearray[i][2] = temp2
+                        statearray[i][3] = temp3
+
+            for i in range(4):
+                for j in range(4):
+                    statearray[i][j].write_to_file(FILEOUT)
+    FILEOUT.close()
+    return
+
+
 if __name__ == '__main__':
     import os
     with open("key.txt", 'r') as KEY:
