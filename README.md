@@ -1,2 +1,2 @@
-# AES-Encryption
-AES.py implements the AES Encryption Algorithm on a message and encrypts to encrypted.txt and decrypts to decrypted.txt
+# AES-Encryption-Decryption
+Implements the AES Algorithm on a message and encrypts to encrypted.txt and decrypts to decrypted.txt for a 256-bit key
