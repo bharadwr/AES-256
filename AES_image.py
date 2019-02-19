@@ -29,22 +29,18 @@ def ctr_aes_image(iv, image_file='image.ppm',out_file='enc_image.ppm', key_file=
     OUTFILE.write(fileType)
     OUTFILE.write(fileDim)
     OUTFILE.write(maxSize)
+    OUTFILE.close()
     keyWords = genKeySchedule256(KEY)
     enc_img = BitVector(size=0)
     iv_temp = iv.deep_copy()
     while bv.more_to_read:
         bitvector = bv.read_bits_from_file(128)
-        enc_img += encrypt(iv_temp, keyWords) ^ bitvector
-        if (int(iv_temp) + 1) is (2**128):
-            iv_temp = BitVector(intVal=0, size=128)
-        else:
-            iv_temp = BitVector(intVal=(int(iv_temp) + 1), size=128)
-
-    OUTFILE.write(enc_img)
+        encrypt(iv_temp, keyWords, bitvector, out_file)
     print("--- %s seconds ---" % (time() - start_time))
 
 
-def encrypt(bitvec, keyWords):
+def encrypt(bitvec, keyWords, bitvector, out_file):
+    FILEOUT= open(out_file, 'wb')
     initializationVector = [[0 for idx in range(0, 4, 1)] for idx in range(0, 4, 1)]
     tShift = [0] * 4
     if len(bitvec) > 0:
@@ -68,8 +64,8 @@ def encrypt(bitvec, keyWords):
         bitVec = BitVector(size=0)
         for outer_loop in range(0, 4, 1):
             for inner_loop in range(0, 4, 1):
-                bitVec += initializationVector[outer_loop][inner_loop]
-        return bitVec
+                (initializationVector[outer_loop][inner_loop] ^ bitvector).write_to_file(FILEOUT)
+        FILEOUT.close()
 
 def shiftRows(tShift, initializationVector, op):
     for outer_loop in range(1, 4):
